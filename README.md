@@ -16,13 +16,29 @@ A modern, full-stack web application for managing university thesis/final year p
 - [Deployment](#deployment)
   
 ## 👥 Authors
-- **J.M. Ifthakharul Islam SHajan**  
-  GitHub: https://github.com/if-i-shajan
-Role: Full Stack Developer
 
-- **Mohammad Hasan**  
-  GitHub: https://github.com/hshasan2004  
-Role: Full Stack Developer
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/if-i-shajan">
+        <img src="https://github.com/if-i-shajan.png" width="100px;" alt="Shajan"/>
+        <br/>
+        <b>J.M. Ifthakharul Islam Shajan</b>
+      </a>
+      <br/>
+      <small>Full Stack Developer</small>
+    </td>
+    <td align="center">
+      <a href="https://github.com/hshasan2004">
+        <img src="https://github.com/hshasan2004.png" width="100px;" alt="Hasan"/>
+        <br/>
+        <b>Mohammad Hasan</b>
+      </a>
+      <br/>
+      <small>Full Stack Developer</small>
+    </td>
+  </tr>
+</table>
   
 ## ✨ Features
 
