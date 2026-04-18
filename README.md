@@ -370,6 +370,92 @@ npm run lint
 - HTTPS in production
 - Secure environment variables
 
+## 🌐 Deployment to Firebase Hosting
+
+### Quick Start (15 minutes)
+
+1. **Create Firebase Project**
+   - Visit: https://console.firebase.google.com/
+   - Click "Add Project"
+   - Name: `thesis-management-system`
+
+2. **Get Project ID**
+   - Firebase Console → Project Settings
+   - Copy your Project ID
+
+3. **Update Configuration**
+   - Edit `.firebaserc`
+   - Replace `YOUR_FIREBASE_PROJECT_ID` with your Project ID
+
+4. **Login & Deploy**
+   ```bash
+   firebase login
+   .\scripts\deploy-firebase.ps1
+   ```
+
+5. **Get Your Live URL**
+   ```
+   Hosting URL: https://your-project-id.web.app
+   ```
+
+### Deployment Options
+
+**Option A: Automated Script (Easiest)**
+```powershell
+.\scripts\deploy-firebase.ps1
+```
+
+**Option B: Manual Commands**
+```bash
+npm run build
+firebase deploy
+```
+
+**Option C: NPM Script**
+```bash
+npm run deploy:firebase
+```
+
+### Detailed Guides
+
+- **Full Guide:** [FIREBASE_DEPLOYMENT.md](FIREBASE_DEPLOYMENT.md)
+- **Quick Start:** [FIREBASE_QUICK_START.md](FIREBASE_QUICK_START.md)
+- **Setup Instructions:** [FIREBASE_HOSTING_SETUP.md](FIREBASE_HOSTING_SETUP.md)
+
+### Deployment Checklist
+
+- [ ] Firebase project created
+- [ ] Project ID copied
+- [ ] `.firebaserc` updated
+- [ ] `firebase login` executed
+- [ ] `npm run build` completed
+- [ ] `firebase deploy` successful
+- [ ] Live URL verified
+- [ ] Site loaded in browser
+
+### Build & Deployment Stats
+
+```
+Build Size: ~440 KB (122 KB gzipped)
+Build Time: 3.25 seconds
+Deployment: Instant to Firebase CDN
+Performance: Global CDN with automatic SSL/TLS
+```
+
+### Post-Deployment
+
+After deployment, your site is live at:
+- Main URL: `https://your-project-id.web.app`
+- Alternate: `https://your-project-id.firebaseapp.com`
+
+For every update:
+```bash
+npm run build
+firebase deploy
+```
+
+---
+
 ## 📚 Additional Resources
 
 - [Supabase Documentation](https://supabase.com/docs)
@@ -377,6 +463,8 @@ npm run lint
 - [Tailwind CSS](https://tailwindcss.com)
 - [Vite Guide](https://vitejs.dev)
 - [React Router](https://reactrouter.com)
+- [Firebase Hosting](https://firebase.google.com/docs/hosting)
+- [Firebase CLI](https://firebase.google.com/docs/cli)
 
 ## 🤝 Contributing
 
