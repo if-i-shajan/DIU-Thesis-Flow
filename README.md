@@ -15,7 +15,7 @@ A modern, full-stack web application for managing university thesis/final year p
 - [Features by Role](#features-by-role)
 - [Deployment](#deployment)
   
-## 👥 Authors
+## 👥 Devs
 
 <table>
   <tr>
