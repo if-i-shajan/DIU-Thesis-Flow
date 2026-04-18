@@ -14,7 +14,11 @@ A modern, full-stack web application for managing university thesis/final year p
 - [Running the Application](#running-the-application)
 - [Features by Role](#features-by-role)
 - [Deployment](#deployment)
+## 👥 Authors
 
+- **Mohammad Hasan**  
+  GitHub: https://github.com/hshasan2004  
+  Role: Full Stack Developer
 ## ✨ Features
 
 ### Core Features
