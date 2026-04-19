@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 
 export const supervisorService = {
     async getSupervisors() {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisors')
                 .select('*, user_profiles(full_name, email)')
@@ -17,6 +18,7 @@ export const supervisorService = {
 
     async getSupervisorById(id) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisors')
                 .select('*, user_profiles(full_name, email)')
@@ -32,6 +34,7 @@ export const supervisorService = {
 
     async getSupervisorsByDepartment(department) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisors')
                 .select('*, user_profiles(full_name, email)')
@@ -46,6 +49,7 @@ export const supervisorService = {
 
     async createSupervisor(supervisorData) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisors')
                 .insert([supervisorData])
@@ -60,6 +64,7 @@ export const supervisorService = {
 
     async updateSupervisor(id, updates) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisors')
                 .update(updates)

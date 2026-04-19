@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 
 const ALLOWED_SIGNUP_ROLES = ['student', 'supervisor']
 const BANGLADESH_PHONE_REGEX = /^\+8801[3-9]\d{8}$/
@@ -6,6 +6,7 @@ const BANGLADESH_PHONE_REGEX = /^\+8801[3-9]\d{8}$/
 export const authService = {
     async signup(email, password, fullName, role = 'student', additionalInfo = {}) {
         try {
+            const supabase = getSupabaseClient()
             const normalizedRole = (role || 'student').toLowerCase()
             if (!ALLOWED_SIGNUP_ROLES.includes(normalizedRole)) {
                 return {
@@ -102,6 +103,7 @@ export const authService = {
 
     async login(email, password) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -116,6 +118,7 @@ export const authService = {
 
     async logout() {
         try {
+            const supabase = getSupabaseClient()
             const { error } = await supabase.auth.signOut()
             if (error) throw error
             return { success: true }
@@ -126,6 +129,7 @@ export const authService = {
 
     async getCurrentUser() {
         try {
+            const supabase = getSupabaseClient()
             const {
                 data: { user },
                 error,
@@ -140,6 +144,7 @@ export const authService = {
 
     async getUserProfile(userId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('user_profiles')
                 .select('*')

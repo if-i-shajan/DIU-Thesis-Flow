@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 
 export const projectService = {
     async getProjects() {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('projects')
                 .select('*, supervisors(full_name, department)')
@@ -17,6 +18,7 @@ export const projectService = {
 
     async getProjectById(id) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('projects')
                 .select('*, supervisors(full_name, department, research_area)')
@@ -32,6 +34,7 @@ export const projectService = {
 
     async getProjectsByCategory(category) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('projects')
                 .select('*, supervisors(full_name, department)')
@@ -47,6 +50,7 @@ export const projectService = {
 
     async createProject(projectData) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('projects')
                 .insert([projectData])
@@ -61,6 +65,7 @@ export const projectService = {
 
     async updateProject(id, updates) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('projects')
                 .update(updates)
@@ -76,6 +81,7 @@ export const projectService = {
 
     async deleteProject(id) {
         try {
+            const supabase = getSupabaseClient()
             const { error } = await supabase
                 .from('projects')
                 .delete()

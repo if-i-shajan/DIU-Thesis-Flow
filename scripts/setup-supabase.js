@@ -2,83 +2,120 @@ import fs from 'fs'
 import path from 'path'
 import { createClient } from '@supabase/supabase-js'
 
-// Read environment variables
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://svrkqmhyggwggcfrlcoi.supabase.co'
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY // For admin operations
+const ROOT = process.cwd()
+const envPath = path.join(ROOT, '.env.local')
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('❌ Error: Missing Supabase credentials in .env.local')
-    console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
-    process.exit(1)
+const parseEnvFile = (filePath) => {
+    if (!fs.existsSync(filePath)) return {}
+
+    const content = fs.readFileSync(filePath, 'utf8')
+    const parsed = {}
+
+    for (const rawLine of content.split(/\r?\n/)) {
+        const line = rawLine.trim()
+        if (!line || line.startsWith('#')) continue
+
+        const separatorIndex = line.indexOf('=')
+        if (separatorIndex === -1) continue
+
+        const key = line.slice(0, separatorIndex).trim()
+        const value = line.slice(separatorIndex + 1).trim().replace(/^"|"$/g, '')
+        parsed[key] = value
+    }
+
+    return parsed
 }
 
-console.log('🚀 Thesis Management System - Supabase Setup')
-console.log('='.repeat(50))
-console.log(`📍 Supabase URL: ${SUPABASE_URL}`)
-console.log('='.repeat(50))
+const fromFile = parseEnvFile(envPath)
+const supabaseUrl = process.env.VITE_SUPABASE_URL || fromFile.VITE_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || fromFile.VITE_SUPABASE_ANON_KEY || ''
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const isPlaceholderValue = (value) => {
+    if (!value) return true
+    const normalized = value.trim().toLowerCase()
+    return normalized.includes('your_') || normalized.includes('_here')
+}
 
-async function setupDatabase() {
+const hasValidUrl = (value) => {
     try {
-        console.log('\n📋 Setting up database schema...')
-
-        // Read the database schema SQL file
-        const schemaPath = path.join(process.cwd(), 'DATABASE_SCHEMA.sql')
-        if (!fs.existsSync(schemaPath)) {
-            console.error('❌ DATABASE_SCHEMA.sql not found!')
-            process.exit(1)
-        }
-
-        const schema = fs.readFileSync(schemaPath, 'utf-8')
-
-        // Note: The Supabase JavaScript client doesn't support raw SQL execution
-        // This script provides the setup instructions instead
-        console.log('\n⚠️  MANUAL SETUP REQUIRED')
-        console.log('='.repeat(50))
-        console.log('\nTo complete Supabase setup:')
-        console.log('\n1. Open Supabase Dashboard: https://app.supabase.com')
-        console.log('2. Select your project')
-        console.log('3. Go to SQL Editor → New Query')
-        console.log('4. Copy contents of DATABASE_SCHEMA.sql')
-        console.log('5. Paste into SQL Editor and click Run')
-        console.log('\nOR use this command to load the schema:')
-        console.log('   supabase db push')
-        console.log('='.repeat(50))
-
-        // Test connection
-        console.log('\n🧪 Testing Supabase connection...')
-        const { data, error } = await supabase.from('user_profiles').select('count', { count: 'exact', head: true })
-
-        if (error) {
-            console.log('⚠️  Tables not yet created (this is normal before schema setup)')
-            console.log(`   Error: ${error.message}`)
-        } else {
-            console.log('✅ Supabase connection successful!')
-            console.log('✅ Database tables exist!')
-        }
-
-        // Load sample data
-        console.log('\n📝 To load sample data:')
-        console.log('1. Go to Supabase SQL Editor → New Query')
-        console.log('2. Copy contents of SAMPLE_DATA.sql')
-        console.log('3. Paste into SQL Editor and click Run')
-        console.log('4. Test with demo credentials:')
-        console.log('   - Email: student@test.com')
-        console.log('   - Password: password123')
-
-        console.log('\n' + '='.repeat(50))
-        console.log('✅ Setup Instructions Complete!')
-        console.log('='.repeat(50))
-        console.log('\n📖 For detailed instructions, see: SUPABASE_SETUP.md')
-
-    } catch (error) {
-        console.error('❌ Setup error:', error.message)
-        process.exit(1)
+        const parsed = new URL(value)
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+    } catch {
+        return false
     }
 }
 
-// Run setup
-setupDatabase()
+const printHeader = () => {
+    console.log('==================================================')
+    console.log('Supabase setup and connectivity check')
+    console.log('==================================================')
+}
+
+const printManualSetup = () => {
+    console.log('\nManual setup steps:')
+    console.log('1. Open Supabase Dashboard: https://app.supabase.com')
+    console.log('2. Open your project SQL Editor and run DATABASE_SCHEMA.sql')
+    console.log('3. Optionally run SAMPLE_DATA.sql for demo data')
+    console.log('4. Keep .env.local with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
+}
+
+const main = async () => {
+    printHeader()
+
+    if (!fs.existsSync(envPath)) {
+        console.error('Missing .env.local file in project root.')
+        console.log('Create it from .env.example and add Supabase credentials.')
+        process.exitCode = 1
+        return
+    }
+
+    if (isPlaceholderValue(supabaseUrl) || isPlaceholderValue(supabaseAnonKey)) {
+        console.error('Supabase credentials look like placeholders.')
+        console.log('Update .env.local with real VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY values.')
+        process.exitCode = 1
+        return
+    }
+
+    if (!hasValidUrl(supabaseUrl)) {
+        console.error('VITE_SUPABASE_URL is not a valid URL.')
+        process.exitCode = 1
+        return
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+    console.log('Supabase URL detected:', supabaseUrl)
+    console.log('Testing auth endpoint...')
+
+    const { error: authError } = await supabase.auth.getSession()
+    if (authError) {
+        console.error('Failed to reach Supabase auth endpoint:', authError.message)
+        process.exitCode = 1
+        return
+    }
+
+    console.log('Auth endpoint reachable.')
+    console.log('Checking if table user_profiles exists...')
+
+    const { error: tableError } = await supabase.from('user_profiles').select('id').limit(1)
+
+    if (tableError) {
+        console.warn('Table check returned:', tableError.message)
+        if (tableError.message.toLowerCase().includes('infinite recursion')) {
+            console.warn('RLS policy recursion detected. Update policies using the fixed DATABASE_SCHEMA.sql and re-run SQL.')
+        } else {
+            console.warn('Schema appears to be missing in this project.')
+        }
+        printManualSetup()
+        process.exitCode = 1
+        return
+    }
+
+    console.log('Supabase connection looks healthy and user_profiles is reachable.')
+    console.log('Setup check complete.')
+}
+
+main().catch((error) => {
+    console.error('Unexpected setup error:', error.message)
+    process.exitCode = 1
+})

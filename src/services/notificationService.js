@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 
 export const notificationService = {
     async getNotifications(userId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('notifications')
                 .select('*')
@@ -18,6 +19,7 @@ export const notificationService = {
 
     async markAsRead(notificationId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('notifications')
                 .update({ is_read: true })
@@ -33,6 +35,7 @@ export const notificationService = {
 
     async createNotification(userId, message, type = 'info') {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('notifications')
                 .insert([
@@ -54,6 +57,7 @@ export const notificationService = {
 
     async deleteNotification(notificationId) {
         try {
+            const supabase = getSupabaseClient()
             const { error } = await supabase
                 .from('notifications')
                 .delete()
@@ -68,6 +72,7 @@ export const notificationService = {
 
     async getUnreadCount(userId) {
         try {
+            const supabase = getSupabaseClient()
             const { count, error } = await supabase
                 .from('notifications')
                 .select('*', { count: 'exact', head: true })

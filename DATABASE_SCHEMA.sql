@@ -91,6 +91,20 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE supervisor_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+-- Helper function for admin checks without recursive RLS lookups
+CREATE OR REPLACE FUNCTION is_admin(user_uuid UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_profiles
+    WHERE id = user_uuid AND role = 'admin'
+  );
+$$;
+
 -- POLICIES FOR user_profiles
 CREATE POLICY "Users can view their own profile"
   ON user_profiles FOR SELECT
@@ -98,12 +112,7 @@ CREATE POLICY "Users can view their own profile"
 
 CREATE POLICY "Admin can view all profiles"
   ON user_profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin(auth.uid()));
 
 CREATE POLICY "Users can update their own profile"
   ON user_profiles FOR UPDATE
@@ -122,12 +131,7 @@ CREATE POLICY "Supervisors can update their own profile"
 
 CREATE POLICY "Admins can manage supervisors"
   ON supervisors FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin(auth.uid()));
 
 -- POLICIES FOR students
 CREATE POLICY "Students can view their own profile"
@@ -149,12 +153,7 @@ CREATE POLICY "Supervisors can view assigned students"
 
 CREATE POLICY "Admins can view all students"
   ON students FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin(auth.uid()));
 
 -- POLICIES FOR projects
 CREATE POLICY "Everyone can view projects"
@@ -176,12 +175,7 @@ CREATE POLICY "Project creators can update their projects"
 
 CREATE POLICY "Admins can manage all projects"
   ON projects FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin(auth.uid()));
 
 -- POLICIES FOR supervisor_requests
 CREATE POLICY "Students can view their own requests"
@@ -215,12 +209,7 @@ CREATE POLICY "Supervisors can update request status"
 
 CREATE POLICY "Admins can manage all requests"
   ON supervisor_requests FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM user_profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  USING (is_admin(auth.uid()));
 
 -- POLICIES FOR notifications
 CREATE POLICY "Users can view their own notifications"

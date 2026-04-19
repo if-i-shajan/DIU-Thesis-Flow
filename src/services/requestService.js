@@ -1,8 +1,9 @@
-import { supabase } from './supabase'
+import { getSupabaseClient } from './supabase'
 
 export const requestService = {
     async sendRequest(studentId, supervisorId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisor_requests')
                 .insert([
@@ -34,6 +35,7 @@ export const requestService = {
 
     async getRequestsForSupervisor(supervisorId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisor_requests')
                 .select('*, students(user_id, department), user_profiles(full_name, email)')
@@ -48,6 +50,7 @@ export const requestService = {
 
     async getRequestsForStudent(studentId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisor_requests')
                 .select('*, supervisors(user_id, department, research_area)')
@@ -62,6 +65,7 @@ export const requestService = {
 
     async updateRequest(id, status) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisor_requests')
                 .update({ status })
@@ -77,6 +81,7 @@ export const requestService = {
 
     async getRequestStatus(studentId, supervisorId) {
         try {
+            const supabase = getSupabaseClient()
             const { data, error } = await supabase
                 .from('supervisor_requests')
                 .select('status')

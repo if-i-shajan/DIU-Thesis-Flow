@@ -26,3 +26,13 @@ export const isSupabaseConfigured =
 export const supabase = isSupabaseConfigured
 	? createClient(supabaseUrl, supabaseAnonKey)
 	: null
+
+export const getSupabaseClient = () => {
+	if (!isSupabaseConfigured || !supabase) {
+		throw new Error(
+			'Supabase is not configured. Set valid VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY values in .env.local.',
+		)
+	}
+
+	return supabase
+}
