@@ -28,6 +28,43 @@ const getSupervisorBundle = async (supervisorId) => {
     return { ...supervisor, user_profiles: profile }
 }
 
+const resolveSupervisorDoc = async (supervisorRef) => {
+    if (!db || !supervisorRef) return null
+
+    const directSnap = await getDoc(doc(db, 'supervisors', supervisorRef))
+    if (directSnap.exists()) return mapDoc(directSnap)
+
+    const q = query(collection(db, 'supervisors'), where('user_id', '==', supervisorRef))
+    const snapshot = await getDocs(q)
+    return snapshot.docs[0] ? mapDoc(snapshot.docs[0]) : null
+}
+
+const getAcceptedCount = async (supervisorDoc) => {
+    if (!db || !supervisorDoc) return 0
+
+    const keys = [...new Set([supervisorDoc.id, supervisorDoc.user_id].filter(Boolean))]
+    const counts = await Promise.all(
+        keys.map(async (key) => {
+            const q = query(
+                collection(db, 'supervisor_requests'),
+                where('supervisor_id', '==', key),
+                where('status', '==', 'accepted')
+            )
+            const snapshot = await getDocs(q)
+            return snapshot.size
+        })
+    )
+
+    return Math.max(0, ...counts, 0)
+}
+
+const syncAssignedCount = async (supervisorDoc) => {
+    if (!db || !supervisorDoc?.id) return 0
+    const assignedCount = await getAcceptedCount(supervisorDoc)
+    await updateDoc(doc(db, 'supervisors', supervisorDoc.id), { assigned_count: assignedCount })
+    return assignedCount
+}
+
 const getStudentBundle = async (studentId) => {
     if (!db || !studentId) return null
     const studentSnap = await getDoc(doc(db, 'students', studentId))
@@ -41,6 +78,18 @@ export const requestService = {
     async sendRequest(studentId, supervisorId) {
         try {
             if (!db) throw new Error('Firebase is not configured.')
+
+            const supervisorDoc = await resolveSupervisorDoc(supervisorId)
+            if (!supervisorDoc) {
+                throw new Error('Supervisor profile not found.')
+            }
+
+            const maxCapacity = Number(supervisorDoc.max_capacity ?? 5)
+            const assignedCount = await syncAssignedCount(supervisorDoc)
+            if (maxCapacity > 0 && assignedCount >= maxCapacity) {
+                throw new Error('Supervisor is not accepting new students.')
+            }
+
             const payload = {
                 student_id: studentId,
                 supervisor_id: supervisorId,
@@ -51,7 +100,7 @@ export const requestService = {
             const docRef = await addDoc(collection(db, 'supervisor_requests'), payload)
 
             await addDoc(collection(db, 'notifications'), {
-                user_id: supervisorId,
+                user_id: supervisorDoc.user_id || supervisorDoc.id,
                 message: `New supervisor request from student ${studentId}`,
                 type: 'request',
                 is_read: false,
@@ -67,14 +116,25 @@ export const requestService = {
     async getRequestsForSupervisor(supervisorId) {
         try {
             if (!db) throw new Error('Firebase is not configured.')
-            const q = query(
-                collection(db, 'supervisor_requests'),
-                where('supervisor_id', '==', supervisorId)
+
+            const supervisorDoc = await resolveSupervisorDoc(supervisorId)
+            const keys = [...new Set([supervisorId, supervisorDoc?.id, supervisorDoc?.user_id].filter(Boolean))]
+
+            const snapshots = await Promise.all(
+                keys.map((key) =>
+                    getDocs(query(collection(db, 'supervisor_requests'), where('supervisor_id', '==', key)))
+                )
             )
-            const snapshot = await getDocs(q)
+
+            const requestMap = new Map()
+            snapshots.forEach((snapshot) => {
+                snapshot.docs.forEach((docSnap) => {
+                    requestMap.set(docSnap.id, mapDoc(docSnap))
+                })
+            })
+
             const requests = await Promise.all(
-                snapshot.docs.map(async (snap) => {
-                    const request = mapDoc(snap)
+                Array.from(requestMap.values()).map(async (request) => {
                     const student = await getStudentBundle(request.student_id)
                     return { ...request, students: student }
                 })
@@ -109,8 +169,29 @@ export const requestService = {
     async updateRequest(id, status) {
         try {
             if (!db) throw new Error('Firebase is not configured.')
+
+            const requestSnap = await getDoc(doc(db, 'supervisor_requests', id))
+            if (!requestSnap.exists()) throw new Error('Request not found.')
+
+            const request = mapDoc(requestSnap)
+            const previousStatus = request.status
+            const supervisorDoc = await resolveSupervisorDoc(request.supervisor_id)
+
+            if (status === 'accepted' && previousStatus !== 'accepted' && supervisorDoc) {
+                const maxCapacity = Number(supervisorDoc.max_capacity ?? 5)
+                const assignedCount = await syncAssignedCount(supervisorDoc)
+                if (maxCapacity > 0 && assignedCount >= maxCapacity) {
+                    throw new Error('No available supervision slots. Increase capacity or reject this request.')
+                }
+            }
+
             await updateDoc(doc(db, 'supervisor_requests', id), { status })
             const snap = await getDoc(doc(db, 'supervisor_requests', id))
+
+            if (supervisorDoc && (previousStatus === 'accepted' || status === 'accepted')) {
+                await syncAssignedCount(supervisorDoc)
+            }
+
             return { success: true, data: [mapDoc(snap)] }
         } catch (error) {
             return { success: false, error: error.message }

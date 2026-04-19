@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useAuthStore } from '../context/store'
+import { useAuthStore, useNotificationStore } from '../context/store'
 import { notificationService } from '../services/notificationService'
 import { Container, Section } from '../components/Layout'
 import { Card } from '../components/Card'
@@ -10,39 +10,45 @@ import { Trash2, CheckCircle } from 'lucide-react'
 
 export const NotificationsPage = () => {
     const { user } = useAuthStore()
-    const [notifications, setNotifications] = useState([])
+    const {
+        notifications,
+        setNotifications,
+        setUnreadCount,
+    } = useNotificationStore()
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
     useEffect(() => {
-        fetchNotifications()
-    }, [user])
-
-    const fetchNotifications = async () => {
-        setLoading(true)
-        try {
-            const result = await notificationService.getNotifications(user.uid)
-            if (result.success) {
-                setNotifications(result.data)
-                setError(null)
-            } else {
-                setError(result.error)
-            }
-        } catch (err) {
-            setError('Failed to load notifications')
-        } finally {
+        if (!user?.uid) {
+            setNotifications([])
+            setUnreadCount(0)
             setLoading(false)
+            return
         }
+
+        const unsubscribe = notificationService.subscribeToNotifications(user.uid, (items) => {
+            setNotifications(items)
+            setUnreadCount(items.filter((item) => !item.is_read).length)
+            setLoading(false)
+        })
+
+        return () => unsubscribe()
+    }, [user?.uid, setNotifications, setUnreadCount])
+
+    const formatDateTime = (value) => {
+        if (!value) return 'Just now'
+        const parsed = value?.toDate ? value.toDate() : new Date(value)
+        if (Number.isNaN(parsed.getTime())) return 'Just now'
+        return parsed.toLocaleString()
     }
 
     const handleMarkAsRead = async (notificationId) => {
         try {
-            await notificationService.markAsRead(notificationId)
-            setNotifications(
-                notifications.map((n) =>
-                    n.id === notificationId ? { ...n, is_read: true } : n
-                )
-            )
+            const result = await notificationService.markAsRead(notificationId)
+            if (!result.success) {
+                setError(result.error || 'Failed to mark notification as read')
+                return
+            }
         } catch (err) {
             setError('Failed to mark notification as read')
         }
@@ -50,8 +56,11 @@ export const NotificationsPage = () => {
 
     const handleDelete = async (notificationId) => {
         try {
-            await notificationService.deleteNotification(notificationId)
-            setNotifications(notifications.filter((n) => n.id !== notificationId))
+            const result = await notificationService.deleteNotification(notificationId)
+            if (!result.success) {
+                setError(result.error || 'Failed to delete notification')
+                return
+            }
         } catch (err) {
             setError('Failed to delete notification')
         }
@@ -95,7 +104,7 @@ export const NotificationsPage = () => {
                                             <div className="flex-1">
                                                 <p className="text-gray-900 font-medium">{notification.message}</p>
                                                 <p className="text-xs text-gray-500 mt-1">
-                                                    {new Date(notification.created_at).toLocaleString()}
+                                                    {formatDateTime(notification.created_at)}
                                                 </p>
                                             </div>
                                             <Badge variant={getTypeColor(notification.type)}>

@@ -129,6 +129,8 @@ const upsertSupervisor = async (uid, profile) => {
         designation: toStringField(profile.designation),
         research_area: toStringField(profile.researchArea),
         years_of_experience: toIntField(profile.yearsOfExperience),
+        max_capacity: toIntField(5),
+        assigned_count: toIntField(0),
         created_at: { timestampValue: nowIso },
         updated_at: { timestampValue: nowIso },
     }

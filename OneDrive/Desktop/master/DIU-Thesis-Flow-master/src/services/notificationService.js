@@ -4,6 +4,7 @@ import {
     deleteDoc,
     doc,
     getDocs,
+    onSnapshot,
     orderBy,
     query,
     serverTimestamp,
@@ -13,6 +14,13 @@ import {
 import { db } from './firebase'
 
 const mapDoc = (snap) => ({ id: snap.id, ...snap.data() })
+
+const normalizeDate = (value) => {
+    if (!value) return null
+    if (typeof value.toDate === 'function') return value.toDate()
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+}
 
 export const notificationService = {
     async getNotifications(userId) {
@@ -80,5 +88,23 @@ export const notificationService = {
         } catch (error) {
             return { success: false, error: error.message }
         }
+    },
+
+    subscribeToNotifications(userId, callback) {
+        if (!db || !userId) return () => {}
+
+        const q = query(
+            collection(db, 'notifications'),
+            where('user_id', '==', userId),
+            orderBy('created_at', 'desc')
+        )
+
+        return onSnapshot(q, (snapshot) => {
+            const notifications = snapshot.docs.map((snap) => {
+                const item = mapDoc(snap)
+                return { ...item, created_at: normalizeDate(item.created_at) }
+            })
+            callback(notifications)
+        })
     },
 }

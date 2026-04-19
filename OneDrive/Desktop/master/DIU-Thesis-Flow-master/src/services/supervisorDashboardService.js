@@ -123,6 +123,9 @@ export const supervisorDashboardService = {
 
             const acceptedGroups = requestsWithStudents.filter((item) => item.status === 'accepted')
             const pendingRequests = requestsWithStudents.filter((item) => item.status === 'pending')
+            const maxCapacity = Number(supervisor.max_capacity ?? 5)
+            const assignedCount = acceptedGroups.length
+            const availableSlots = Math.max(0, maxCapacity - assignedCount)
 
             const timeline = [
                 ...projects.map((project) => ({
@@ -152,6 +155,9 @@ export const supervisorDashboardService = {
                         designation: supervisor.designation || 'Assistant Professor',
                         research_area: supervisor.research_area || 'AI/ML',
                         years_of_experience: Number(supervisor.years_of_experience || 0),
+                        max_capacity: maxCapacity,
+                        assigned_count: assignedCount,
+                        available_slots: availableSlots,
                         preferred_project_domains: splitTags(supervisor.preferred_project_domains || supervisor.research_area),
                     },
                     projects,
@@ -202,6 +208,26 @@ export const supervisorDashboardService = {
                 setDoc(doc(db, 'user_profiles', uid), profilePayload, { merge: true }),
                 setDoc(doc(db, 'supervisors', supervisorId || uid), supervisorPayload, { merge: true }),
             ])
+
+            return { success: true }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    },
+
+    async updateCapacity(supervisorId, maxCapacity) {
+        try {
+            if (!db) throw new Error('Firebase is not configured.')
+
+            const capacity = Math.max(1, Number(maxCapacity) || 1)
+            await setDoc(
+                doc(db, 'supervisors', supervisorId),
+                {
+                    max_capacity: capacity,
+                    updated_at: serverTimestamp(),
+                },
+                { merge: true }
+            )
 
             return { success: true }
         } catch (error) {

@@ -13,11 +13,42 @@ import { db } from './firebase'
 
 const mapDoc = (snap) => ({ id: snap.id, ...snap.data() })
 
+const getAcceptedCount = async (supervisor) => {
+    if (!db || !supervisor) return 0
+
+    const keys = [...new Set([supervisor.id, supervisor.user_id].filter(Boolean))]
+    const counts = await Promise.all(
+        keys.map(async (key) => {
+            const q = query(
+                collection(db, 'supervisor_requests'),
+                where('supervisor_id', '==', key),
+                where('status', '==', 'accepted')
+            )
+            const snapshot = await getDocs(q)
+            return snapshot.size
+        })
+    )
+
+    return Math.max(0, ...counts, 0)
+}
+
+const withCapacity = async (supervisor) => {
+    const assignedCount = await getAcceptedCount(supervisor)
+    const maxCapacity = Number(supervisor.max_capacity ?? 5)
+    return {
+        ...supervisor,
+        max_capacity: maxCapacity,
+        assigned_count: assignedCount,
+        available_slots: Math.max(0, maxCapacity - assignedCount),
+    }
+}
+
 const attachProfile = async (supervisor) => {
     if (!db) return supervisor
     const profileSnap = await getDoc(doc(db, 'user_profiles', supervisor.user_id || supervisor.id))
     const profile = profileSnap.exists() ? mapDoc(profileSnap) : null
-    return { ...supervisor, user_profiles: profile }
+    const supervisorWithCapacity = await withCapacity(supervisor)
+    return { ...supervisorWithCapacity, user_profiles: profile }
 }
 
 export const supervisorService = {

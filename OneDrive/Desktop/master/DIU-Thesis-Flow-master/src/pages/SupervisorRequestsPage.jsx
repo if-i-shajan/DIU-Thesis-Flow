@@ -8,6 +8,7 @@ import { Button } from '../components/Button'
 import { Badge } from '../components/Badge'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { Alert } from '../components/Alert'
+import { Modal } from '../components/Modal'
 import { CheckCircle, XCircle, Clock } from 'lucide-react'
 
 export const SupervisorRequestsPage = () => {
@@ -16,6 +17,7 @@ export const SupervisorRequestsPage = () => {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [message, setMessage] = useState('')
+    const [selectedRequest, setSelectedRequest] = useState(null)
 
     useEffect(() => {
         fetchRequests()
@@ -76,6 +78,13 @@ export const SupervisorRequestsPage = () => {
         }
     }
 
+    const formatDateTime = (value) => {
+        if (!value) return 'Just now'
+        const parsed = value?.toDate ? value.toDate() : new Date(value)
+        if (Number.isNaN(parsed.getTime())) return 'Just now'
+        return parsed.toLocaleString()
+    }
+
     if (loading) return <LoadingSpinner fullPage />
 
     return (
@@ -115,6 +124,13 @@ export const SupervisorRequestsPage = () => {
                                     {request.status === 'pending' && (
                                         <div className="flex gap-2 mt-4 md:mt-0">
                                             <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setSelectedRequest(request)}
+                                            >
+                                                View Details
+                                            </Button>
+                                            <Button
                                                 variant="success"
                                                 size="sm"
                                                 onClick={() => handleRequest(request.id, 'accepted')}
@@ -140,6 +156,55 @@ export const SupervisorRequestsPage = () => {
                     )}
                 </Section>
             </Container>
+
+            <Modal
+                isOpen={Boolean(selectedRequest)}
+                onClose={() => setSelectedRequest(null)}
+                title="Student Profile & Request Details"
+                size="xl"
+            >
+                {selectedRequest && (
+                    <div className="space-y-4">
+                        <div className="rounded-xl bg-[#F7F9FF] p-4">
+                            <p className="text-lg font-bold text-[#1A2756]">
+                                {selectedRequest.students?.user_profiles?.full_name || 'Student'}
+                            </p>
+                            <p className="text-sm text-[#6070A2]">{selectedRequest.students?.user_profiles?.email || 'Email unavailable'}</p>
+                            <p className="text-sm text-[#6070A2]">Phone: {selectedRequest.students?.user_profiles?.phone || '+8801XXXXXXXXX'}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Student ID</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{selectedRequest.students?.user_profiles?.student_id || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Department</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{selectedRequest.students?.department || selectedRequest.students?.user_profiles?.department || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Request Status</p>
+                                <p className="mt-1 font-semibold capitalize text-[#1A2756]">{selectedRequest.status}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Submitted</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{formatDateTime(selectedRequest.created_at)}</p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg border border-[#DCE4FF] p-3">
+                            <p className="text-xs text-[#6B79A7]">Request Details</p>
+                            <p className="mt-1 text-sm text-[#334169]">Project Interest: {selectedRequest.project_interest || 'General supervision request'}</p>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Button variant="secondary" onClick={() => setSelectedRequest(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     )
 }

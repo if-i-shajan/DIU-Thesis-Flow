@@ -4,7 +4,18 @@ import { Card } from './Card'
 import { Button } from './Button'
 import { Badge } from './Badge'
 
-export const SupervisorCard = ({ supervisor, onRequest, onViewDetails }) => {
+export const SupervisorCard = ({
+    supervisor,
+    onRequest,
+    onViewDetails,
+    requestDisabled = false,
+    requestDisabledMessage = '',
+}) => {
+    const maxCapacity = Number(supervisor.max_capacity ?? 0)
+    const assignedCount = Number(supervisor.assigned_count ?? 0)
+    const availableSlots = maxCapacity > 0 ? Math.max(0, maxCapacity - assignedCount) : null
+    const isFull = maxCapacity > 0 && availableSlots === 0
+
     return (
         <Card className="flex flex-col">
             {/* Header */}
@@ -43,6 +54,29 @@ export const SupervisorCard = ({ supervisor, onRequest, onViewDetails }) => {
                         </a>
                     </div>
                 </div>
+
+                <div className="rounded-lg border border-blue-100 bg-blue-50 p-2.5">
+                    <div className="mb-1 flex items-center justify-between">
+                        <p className="text-xs text-blue-700">Supervision Capacity</p>
+                        {isFull && (
+                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                                FULL
+                            </span>
+                        )}
+                    </div>
+                    {maxCapacity > 0 ? (
+                        <div>
+                            <p className="text-sm font-semibold text-blue-900">
+                                Assigned: {assignedCount} / {maxCapacity}
+                            </p>
+                            <p className={`text-xs font-semibold ${isFull ? 'text-red-600' : 'text-emerald-600'}`}>
+                                Available Slots: {availableSlots}
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="text-sm font-semibold text-blue-900">No capacity limit set</p>
+                    )}
+                </div>
             </div>
 
             {/* Actions */}
@@ -62,12 +96,16 @@ export const SupervisorCard = ({ supervisor, onRequest, onViewDetails }) => {
                         variant="primary"
                         size="sm"
                         fullWidth
+                        disabled={requestDisabled}
                         onClick={() => onRequest(supervisor.id)}
                     >
-                        Send Request
+                        {requestDisabled ? 'Unavailable' : 'Send Request'}
                     </Button>
                 )}
             </div>
+            {requestDisabled && requestDisabledMessage && (
+                <p className="mt-2 text-xs font-medium text-red-600">{requestDisabledMessage}</p>
+            )}
         </Card>
     )
 }

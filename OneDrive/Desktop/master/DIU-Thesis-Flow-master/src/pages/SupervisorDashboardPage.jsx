@@ -16,6 +16,7 @@ import { Alert } from '../components/Alert'
 import { Button } from '../components/Button'
 import { Input, Select, Textarea } from '../components/FormInputs'
 import { LoadingSpinner } from '../components/LoadingSpinner'
+import { Modal } from '../components/Modal'
 import {
     RequestStatusBadge,
     SupervisorDashboardCard,
@@ -73,6 +74,8 @@ export const SupervisorDashboardPage = () => {
     const [isSaving, setIsSaving] = useState(false)
     const [isProjectSubmitting, setIsProjectSubmitting] = useState(false)
     const [editingProjectId, setEditingProjectId] = useState('')
+    const [capacityInput, setCapacityInput] = useState('5')
+    const [selectedRequest, setSelectedRequest] = useState(null)
 
     const [dashboard, setDashboard] = useState({
         profile: null,
@@ -138,7 +141,14 @@ export const SupervisorDashboardPage = () => {
             ? supervisor.preferred_project_domains
             : ['Web Development', 'Mobile Apps', 'IoT']
 
-    const capacityUsage = Math.min(100, (dashboard.acceptedGroups.length / 8) * 100)
+    const maxCapacity = Number(supervisor.max_capacity ?? 5)
+    const assignedCount = Number(supervisor.assigned_count ?? dashboard.acceptedGroups.length)
+    const availableSlots = Math.max(0, maxCapacity - assignedCount)
+    const capacityUsage = maxCapacity > 0 ? Math.min(100, (assignedCount / maxCapacity) * 100) : 0
+
+    useEffect(() => {
+        setCapacityInput(String(maxCapacity || 1))
+    }, [maxCapacity])
 
     const reloadDashboard = async () => {
         const refreshed = await supervisorDashboardService.getSupervisorDashboard(user.uid)
@@ -227,6 +237,11 @@ export const SupervisorDashboardPage = () => {
     }
 
     const handleRequestAction = async (request, status) => {
+        if (status === 'accepted' && availableSlots <= 0) {
+            setError('No available supervision slots. Increase capacity first.')
+            return
+        }
+
         const result = await requestService.updateRequest(request.id, status)
         if (!result.success) {
             setError(result.error || 'Failed to update request status.')
@@ -240,6 +255,30 @@ export const SupervisorDashboardPage = () => {
         )
 
         setSuccess(`Request ${status} successfully.`)
+        await reloadDashboard()
+    }
+
+    const handleCapacityUpdate = async () => {
+        setError('')
+        setSuccess('')
+
+        const parsed = Number(capacityInput)
+        if (!Number.isFinite(parsed) || parsed < 1) {
+            setError('Maximum capacity must be at least 1.')
+            return
+        }
+
+        const result = await supervisorDashboardService.updateCapacity(
+            supervisor.id || user.uid,
+            parsed,
+        )
+
+        if (!result.success) {
+            setError(result.error || 'Failed to update capacity.')
+            return
+        }
+
+        setSuccess('Supervision capacity updated successfully.')
         await reloadDashboard()
     }
 
@@ -364,6 +403,48 @@ export const SupervisorDashboardPage = () => {
                                         <div className="h-2 rounded-full bg-[#2A4DD0]" style={{ width: `${capacityUsage}%` }} />
                                     </div>
                                 </div>
+                            </div>
+                        </SupervisorDashboardCard>
+
+                        <SupervisorDashboardCard title="Supervision Capacity">
+                            <div className="space-y-3 text-sm">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="rounded-xl bg-[#F7F9FF] p-3 text-center">
+                                        <p className="text-xs text-[#6B79A7]">Max Capacity</p>
+                                        <p className="mt-1 text-xl font-bold text-[#1A2756]">{maxCapacity}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-[#F7F9FF] p-3 text-center">
+                                        <p className="text-xs text-[#6B79A7]">Assigned</p>
+                                        <p className="mt-1 text-xl font-bold text-[#1A2756]">{assignedCount}</p>
+                                    </div>
+                                    <div className={`rounded-xl p-3 text-center ${availableSlots > 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                                        <p className="text-xs text-[#6B79A7]">Available</p>
+                                        <p className={`mt-1 text-xl font-bold ${availableSlots > 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                            {availableSlots}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="h-2 w-full rounded-full bg-[#E4EAFF]">
+                                    <div className={`h-2 rounded-full ${availableSlots > 0 ? 'bg-[#2A4DD0]' : 'bg-red-500'}`} style={{ width: `${capacityUsage}%` }} />
+                                </div>
+
+                                <div className="flex items-end gap-2">
+                                    <Input
+                                        label="Maximum Group Capacity"
+                                        type="number"
+                                        min="1"
+                                        value={capacityInput}
+                                        onChange={(event) => setCapacityInput(event.target.value)}
+                                    />
+                                    <Button type="button" className="mb-4" onClick={handleCapacityUpdate}>
+                                        Update Capacity
+                                    </Button>
+                                </div>
+
+                                {availableSlots <= 0 && (
+                                    <p className="text-xs font-semibold text-red-600">Supervisor is not accepting new students</p>
+                                )}
                             </div>
                         </SupervisorDashboardCard>
 
@@ -507,6 +588,13 @@ export const SupervisorDashboardPage = () => {
                                             <div className="mt-3 flex gap-2">
                                                 <Button
                                                     size="sm"
+                                                    variant="outline"
+                                                    onClick={() => setSelectedRequest(request)}
+                                                >
+                                                    View Profile
+                                                </Button>
+                                                <Button
+                                                    size="sm"
                                                     variant="success"
                                                     onClick={() => handleRequestAction(request, 'accepted')}
                                                 >
@@ -540,6 +628,15 @@ export const SupervisorDashboardPage = () => {
                                             <div key={request.id} className="rounded-xl border border-[#DCE4FF] bg-[#F8FAFF] p-3">
                                                 <p className="text-sm font-semibold text-[#1A2756]">{student.group_name || 'Assigned Group'}</p>
                                                 <p className="mt-1 text-xs text-[#5F6D9B]">Project Topic: {request.project_interest || 'General supervision'}</p>
+                                                <div className="mt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => setSelectedRequest(request)}
+                                                    >
+                                                        View Student Details
+                                                    </Button>
+                                                </div>
                                                 <div className="mt-2 space-y-2">
                                                     {members.map((member, index) => (
                                                         <div key={`${member.id || member.name}-${index}`} className="flex items-center justify-between rounded-lg border border-[#E0E7FF] bg-white px-2 py-1.5">
@@ -634,6 +731,77 @@ export const SupervisorDashboardPage = () => {
                 onSave={handleSaveProfile}
                 isSaving={isSaving}
             />
+
+            <Modal
+                isOpen={Boolean(selectedRequest)}
+                onClose={() => setSelectedRequest(null)}
+                title="Student Profile & Request Details"
+                size="xl"
+            >
+                {selectedRequest && (
+                    <div className="space-y-4">
+                        <div className="rounded-xl bg-[#F7F9FF] p-4">
+                            <p className="text-lg font-bold text-[#1A2756]">
+                                {selectedRequest.student?.user_profiles?.full_name || 'Student'}
+                            </p>
+                            <p className="text-sm text-[#6070A2]">{selectedRequest.student?.user_profiles?.email || 'Email unavailable'}</p>
+                            <p className="text-sm text-[#6070A2]">Phone: {selectedRequest.student?.user_profiles?.phone || '+8801XXXXXXXXX'}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Student ID</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{selectedRequest.student?.user_profiles?.student_id || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Department</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{selectedRequest.student?.department || selectedRequest.student?.user_profiles?.department || 'N/A'}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Group Name</p>
+                                <p className="mt-1 font-semibold text-[#1A2756]">{selectedRequest.student?.group_name || 'Not set'}</p>
+                            </div>
+                            <div className="rounded-lg border border-[#DCE4FF] p-3">
+                                <p className="text-xs text-[#6B79A7]">Request Status</p>
+                                <p className="mt-1 font-semibold capitalize text-[#1A2756]">{selectedRequest.status}</p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg border border-[#DCE4FF] p-3">
+                            <p className="text-xs text-[#6B79A7]">Request Details</p>
+                            <p className="mt-1 text-sm text-[#334169]">Project Interest: {selectedRequest.project_interest || 'General supervision request'}</p>
+                            <p className="mt-1 text-sm text-[#334169]">Submitted: {formatDateTime(selectedRequest.created_at)}</p>
+                        </div>
+
+                        <div className="rounded-lg border border-[#DCE4FF] p-3">
+                            <p className="text-xs text-[#6B79A7]">Group Members</p>
+                            <div className="mt-2 space-y-2">
+                                {(selectedRequest.student?.group_members || [{
+                                    name: selectedRequest.student?.user_profiles?.full_name || 'Student',
+                                    id: selectedRequest.student?.user_profiles?.student_id || 'N/A',
+                                    leader: true,
+                                }]).map((member, idx) => (
+                                    <div key={`${member.id || member.name}-${idx}`} className="flex items-center justify-between rounded-lg border border-[#E0E7FF] bg-white px-3 py-2">
+                                        <div>
+                                            <p className="text-sm font-semibold text-[#1A2756]">{member.name}</p>
+                                            <p className="text-xs text-[#6171A2]">{member.id || 'N/A'}</p>
+                                        </div>
+                                        {member.leader && (
+                                            <span className="rounded-full bg-[#2A4DD0] px-2 py-1 text-xs font-semibold text-white">Leader</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Button variant="secondary" onClick={() => setSelectedRequest(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     )
 }

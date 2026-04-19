@@ -157,6 +157,8 @@ export const authService = {
                     designation: designation || null,
                     research_area: researchAreas || null,
                     years_of_experience: yearsOfExperience || null,
+                    max_capacity: 5,
+                    assigned_count: 0,
                     created_at: serverTimestamp(),
                     updated_at: serverTimestamp(),
                 }
